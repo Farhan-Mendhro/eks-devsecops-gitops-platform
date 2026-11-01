@@ -1,0 +1,136 @@
+[
+  {
+    "_id": {
+      "$oid": "6a0000000000000000a00001"
+    },
+    "authorName": "Synopsis Team",
+    "title": "Zero-downtime deployments on Kubernetes",
+    "imageLink": "/covers/cover-1.png",
+    "categories": [
+      "Kubernetes",
+      "DevOps"
+    ],
+    "description": "Rolling updates only stay boring when the cluster knows when a pod is ready. We walk through the settings that turn a risky release into a non-event.\n\nSet maxUnavailable to zero and maxSurge to one, so capacity never drops during a rollout. Give every container a readiness probe that checks real dependencies, and a separate liveness probe that only restarts a truly stuck process.\n\nHandle SIGTERM properly: stop accepting new work, finish in-flight requests, then exit. A short preStop sleep covers the delay before endpoints are removed from the load balancer. Finish with a PodDisruptionBudget so a node drain can never take every replica at once.",
+    "isFeaturedPost": true,
+    "timeOfPost": {
+      "$date": "2026-10-28T09:00:00.000Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "6a0000000000000000a00002"
+    },
+    "authorName": "Synopsis Team",
+    "title": "Shift-left security in a CI pipeline",
+    "imageLink": "/covers/cover-2.png",
+    "categories": [
+      "Security",
+      "DevOps"
+    ],
+    "description": "Security findings are cheapest to fix on the pull request that introduced them. Here is a pipeline that fails early and reports clearly.\n\nScan the diff for secrets, check dependencies for known CVEs, run static analysis against a quality gate, then scan the container image before it is pushed. Pin base images by digest so what you scanned is what you ship.\n\nPublish one combined report back to the pull request. If reviewers have to open four tools, they will open none.",
+    "isFeaturedPost": true,
+    "timeOfPost": {
+      "$date": "2026-10-25T09:00:00.000Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "6a0000000000000000a00003"
+    },
+    "authorName": "Synopsis Team",
+    "title": "GitOps with Argo CD, end to end",
+    "imageLink": "/covers/cover-3.png",
+    "categories": [
+      "Automation",
+      "Kubernetes"
+    ],
+    "description": "Git becomes the source of truth for cluster state, and every change is a reviewed commit.\n\nKeep application code and deployment manifests in separate repositories, because they change at different speeds. Define an Application per environment, enable automated sync with prune and self-heal, and use an app-of-apps root so a new cluster bootstraps with one command.\n\nPromote by pull request: update the image tag in the environment folder, merge, and let Argo CD roll it out. Alert when an app stays OutOfSync for more than a few minutes.",
+    "isFeaturedPost": true,
+    "timeOfPost": {
+      "$date": "2026-10-22T09:00:00.000Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "6a0000000000000000a00004"
+    },
+    "authorName": "Synopsis Team",
+    "title": "SLO-based alerting with Prometheus and Grafana",
+    "imageLink": "/covers/cover-4.png",
+    "categories": [
+      "Observability"
+    ],
+    "description": "Stop paging people for CPU graphs. Define what good looks like for users, then alert on how fast you are burning the error budget.\n\nStart with one indicator, such as request success ratio on a key journey. Set an objective like 99.9 percent over thirty days, compute the budget, and write burn-rate alerts over a fast and a slow window together to cut noise.\n\nRoute fast burn to a page and slow burn to a ticket. Review budget spend monthly to decide between feature work and reliability work.",
+    "isFeaturedPost": true,
+    "timeOfPost": {
+      "$date": "2026-10-19T09:00:00.000Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "6a0000000000000000a00005"
+    },
+    "authorName": "Synopsis Team",
+    "title": "Terraform layouts that scale past one engineer",
+    "imageLink": "/covers/cover-5.png",
+    "categories": [
+      "Cloud",
+      "DevOps"
+    ],
+    "description": "Infrastructure code stays reviewable when environments are thin and modules are versioned.\n\nUse remote state with locking so two applies can never collide. Give each environment its own folder that calls shared modules with different inputs, and pin module sources to tags so upgrades are deliberate.\n\nRun a plan on every pull request, post it as a comment, and only apply from the main branch.",
+    "isFeaturedPost": false,
+    "timeOfPost": {
+      "$date": "2026-10-16T09:00:00.000Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "6a0000000000000000a00006"
+    },
+    "authorName": "Synopsis Team",
+    "title": "Least-privilege IAM for pods on EKS",
+    "imageLink": "/covers/cover-6.png",
+    "categories": [
+      "Security",
+      "Cloud"
+    ],
+    "description": "Every workload should hold only the AWS permissions it needs, and nothing else.\n\nAssociate an OIDC provider with the cluster, create one role per workload that trusts a single service account, and scope the policy to specific actions on specific resource ARNs. Annotate the service account with the role ARN.\n\nThen audit: use access analysis to find permissions that were never used and remove them.",
+    "isFeaturedPost": false,
+    "timeOfPost": {
+      "$date": "2026-10-13T09:00:00.000Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "6a0000000000000000a00007"
+    },
+    "authorName": "Synopsis Team",
+    "title": "Multi-stage Docker builds for small, safe images",
+    "imageLink": "/covers/cover-7.png",
+    "categories": [
+      "DevOps",
+      "Security"
+    ],
+    "description": "Smaller images pull faster and expose less. A multi-stage build is the cheapest hardening step there is.\n\nCompile in a full builder image and copy only the artifacts into a minimal runtime stage. Create a dedicated user and set USER before CMD. Order layers so lockfiles and dependency installs are cached, and never copy a local .env into an image.",
+    "isFeaturedPost": false,
+    "timeOfPost": {
+      "$date": "2026-10-10T09:00:00.000Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "6a0000000000000000a00008"
+    },
+    "authorName": "Synopsis Team",
+    "title": "The paved road: building a platform people choose",
+    "imageLink": "/covers/cover-8.png",
+    "categories": [
+      "Platform"
+    ],
+    "description": "A platform succeeds when using it is easier than avoiding it.\n\nInterview product teams and fix the most repeated request first. Ship a golden path that creates the repository, pipeline and deployment in one step, and bake guardrails in so security and compliance run by default.\n\nMeasure adoption with time to first deploy and the share of services on the path.",
+    "isFeaturedPost": false,
+    "timeOfPost": {
+      "$date": "2026-10-07T09:00:00.000Z"
+    }
+  }
+]
