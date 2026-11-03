@@ -14,7 +14,7 @@ resource "aws_instance" "synopsis" {
 
   root_block_device {
     volume_size           = var.root_volume_size
-    volume_type           = gp3
+    volume_type           = "gp3"
     encrypted             = true #Enables EBS encryption
     delete_on_termination = true # Deletes volume when instance terminates
   }

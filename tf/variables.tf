@@ -46,5 +46,5 @@ variable "ssh_key_name" {
 variable "root_volume_size" {
   description = "EC2 root storage size in GB"
   type        = number
-  default     = 30
+  default     = 50
 }

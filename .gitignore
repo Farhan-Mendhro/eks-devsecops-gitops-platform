@@ -48,3 +48,7 @@ override.tf
 override.tf.json
 *_override.tf
 *_override.tf.json
+
+# Terraform CLI configuration (optional local files)
+.terraformrc
+terraform.rc
