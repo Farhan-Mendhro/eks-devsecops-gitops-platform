@@ -1,31 +1,29 @@
-# Stage 1
-FROM node:21 AS backend-builder
+#stage 1
+FROM node:24.22.2-alpine3.24 As dependencies
 
-# setup the working dir
 WORKDIR /app
 
-# code
-COPY . .
+COPY package*.json ./
 
-# packages install
-RUN npm i
+# Install locked production dependencies.
+RUN npm ci --omit=dev
 
-# tests
-RUN npm run test
+#stage 2
+FROM node:24.22.2-alpine3.24
 
-# Stage 2
-FROM node:21-slim
-
-# setup the working dir
 WORKDIR /app
 
-# copy the above stage as compressed
-COPY --from=backend-builder /app .
+ENV NODE_ENV=production
 
-COPY .env.docker .env
+# Copy installed dependencies.
+COPY --from=dependencies /app/node_modules ./node_modules
 
-# Port
-EXPOSE 8080
+# Copy backend source code.
+COPY --chown=node:node . .
 
-# App
-CMD ["npm", "start"]
+# Run as the non-root Node user.
+USER node
+
+EXPOSE 5000
+
+CMD ["node", "server.js"]
