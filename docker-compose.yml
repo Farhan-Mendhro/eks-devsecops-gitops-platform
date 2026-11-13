@@ -1,0 +1,64 @@
+services:
+  # React frontend, served by unprivileged NGINX.
+  frontend:
+    build:
+      context: ./frontend
+      args:
+        VITE_API_PATH: /api # Vite uses this when building the frontend.
+    image: farhan249/synopsis-frontend:local
+    ports:
+      - "127.0.0.1:8080:8080" # Browser access, restricted to this machine.
+    depends_on:
+      - backend # Start the backend before the frontend.
+    restart: unless-stopped
+
+  # Node.js / Express API.
+  backend:
+    build:
+      context: ./backend
+    image: farhan249/synopsis-backend:local
+    environment:
+      PORT: "5000" # Port used by the Express application.
+      MONGODB_URI: mongodb://mongodb:27017/synopsis # Internal MongoDB address.
+      REDIS_URL: redis://redis:6379 # Internal Redis address.
+    depends_on:
+      mongodb:
+        condition: service_healthy # Wait for MongoDB to respond.
+      redis:
+        condition: service_healthy # Wait for Redis to respond.
+    networks:
+      default:
+        aliases:
+          - synopsis-backend-svc # Backend DNS name also used by the EKS Service.
+    restart: unless-stopped
+
+  # MongoDB database; no host port is published.
+  mongodb:
+    image: mongo:8.0.30-noble
+    volumes:
+      - mongodb-data:/data/db # Preserve database files across container recreation.
+    healthcheck:
+      test: ["CMD", "mongosh", "--quiet", "--eval", "db.adminCommand('ping').ok"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+  # Redis cache; no host port is published.
+  redis:
+    image: redis:7.4.12-alpine3.22
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+    restart: unless-stopped
+
+# Named volume keeps MongoDB data after containers are removed.
+volumes:
+  mongodb-data:
+
+# Private network shared by the four services.
+networks:
+  default:
+    driver: bridge
