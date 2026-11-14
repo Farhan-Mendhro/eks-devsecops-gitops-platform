@@ -1,0 +1,115 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: synopsis-frontend
+  namespace: synopsis
+  labels:
+    app.kubernetes.io/name: synopsis-frontend
+    app.kubernetes.io/part-of: synopsis
+
+spec:
+  replicas: 2 # Keep two frontend Pods running.
+  revisionHistoryLimit: 3 # Keep three previous versions for rollback.
+
+  strategy:
+    type: RollingUpdate # Replace old Pods gradually during updates.
+    rollingUpdate:
+      maxSurge: 1 # Allow one extra Pod while updating.
+      maxUnavailable: 0 # Keep existing available Pods until replacements are ready.
+
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: synopsis-frontend
+
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: synopsis-frontend
+        app.kubernetes.io/part-of: synopsis
+
+    spec:
+      automountServiceAccountToken: false # Frontend doesn't need Kubernetes API access.
+      terminationGracePeriodSeconds: 30 # Give the application 30 seconds to shut down.
+
+      securityContext:
+        seccompProfile:
+          type: RuntimeDefault # Use the standard Linux restrictions provided by the container runtime.
+
+      affinity:
+        podAntiAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution: # Ask Kubernetes to place frontend Pods on different nodes.
+            - weight: 100
+              podAffinityTerm:
+                labelSelector:
+                  matchLabels:
+                    app.kubernetes.io/name: synopsis-frontend
+                topologyKey: kubernetes.io/hostname
+
+      containers:
+        - name: synopsis-frontend
+          image: docker.io/farhan249/synopsis-frontend:REPLACE_WITH_IMAGE_TAG
+          imagePullPolicy: IfNotPresent
+
+          ports:
+            - name: http
+              containerPort: 8080 # NGINX listens on port 8080 inside the container.
+              protocol: TCP # Use TCP for communication.
+
+          resources:
+            requests:
+              cpu: 100m # Reserve 0.1 CPU for this container.
+              memory: 128Mi # Request 128Mi of memory.
+            limits:
+              cpu: 500m # Don't allow CPU usage above 0.5 CPU.
+              memory: 512Mi # Limit memory usage to 512Mi.
+
+          startupProbe:
+            httpGet:
+              path: /
+              port: http
+            periodSeconds: 5 # Check every 5 seconds.
+            timeoutSeconds: 2 # Wait up to 2 seconds for a response.
+            failureThreshold: 30 # Allow up to 150 seconds for startup.
+
+          readinessProbe:
+            httpGet:
+              path: /
+              port: http
+            periodSeconds: 10 # Check every 10 seconds.
+            timeoutSeconds: 2
+            failureThreshold: 3 # Mark the Pod not ready after 3 failed checks.
+
+          livenessProbe:
+            httpGet:
+              path: /
+              port: http
+            periodSeconds: 15 # Check every 15 seconds.
+            timeoutSeconds: 2
+            failureThreshold: 3 # Restart the container after 3 failed checks.
+
+          securityContext:
+            allowPrivilegeEscalation: false # Don't allow the application to gain extra permissions.
+            capabilities:
+              drop:
+                - ALL # Remove additional Linux permissions the container doesn't need.
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: synopsis-frontend-svc
+  namespace: synopsis
+  labels:
+    app.kubernetes.io/name: synopsis-frontend
+
+spec:
+  type: ClusterIP
+
+  selector:
+    app.kubernetes.io/name: synopsis-frontend # Send traffic to frontend Pods.
+
+  ports:
+    - name: http
+      port: 80
+      targetPort: http # Forward traffic to container port 8080.
+      protocol: TCP

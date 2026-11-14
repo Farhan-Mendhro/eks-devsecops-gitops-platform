@@ -1,0 +1,130 @@
+# MongoDB remains internal to the Kubernetes cluster.
+# This baseline matches Docker Compose and does not enable MongoDB authentication.
+
+apiVersion: v1
+kind: Service
+metadata:
+  name: synopsis-mongodb-headless
+  namespace: synopsis
+spec:
+  clusterIP: None # Provides a stable identity for the StatefulSet Pods.
+  selector:
+    app.kubernetes.io/name: synopsis-mongodb
+  ports:
+    - name: mongodb
+      port: 27017
+      targetPort: mongodb
+      protocol: TCP
+
+---
+# Internal address used by the backend.
+apiVersion: v1
+kind: Service
+metadata:
+  name: synopsis-mongodb-svc
+  namespace: synopsis
+spec:
+  type: ClusterIP
+  selector:
+    app.kubernetes.io/name: synopsis-mongodb
+  ports:
+    - name: mongodb
+      port: 27017
+      targetPort: mongodb
+      protocol: TCP
+
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: synopsis-mongodb
+  namespace: synopsis
+  labels:
+    app.kubernetes.io/name: synopsis-mongodb
+    app.kubernetes.io/part-of: synopsis
+
+spec:
+  serviceName: synopsis-mongodb-headless # Connect StatefulSet to its headless Service.
+  replicas: 1 # Run one MongoDB instance.
+  revisionHistoryLimit: 3 # Keep three previous versions.
+
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: synopsis-mongodb
+
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: synopsis-mongodb
+        app.kubernetes.io/part-of: synopsis
+
+    spec:
+      automountServiceAccountToken: false # MongoDB doesn't need Kubernetes API access.
+      terminationGracePeriodSeconds: 60 # Give MongoDB time to shut down.
+
+      securityContext:
+        runAsNonRoot: true # Don't run MongoDB as Linux root.
+        runAsUser: 999 # Use the MongoDB image's non-root user.
+        runAsGroup: 999 # Use that user's group.
+        fsGroup: 999 # Allow MongoDB to write to its storage.
+        seccompProfile:
+          type: RuntimeDefault
+
+      containers:
+        - name: mongodb
+          image: mongo:8.0.30-noble
+          imagePullPolicy: IfNotPresent
+
+          ports:
+            - name: mongodb
+              containerPort: 27017
+              protocol: TCP
+
+          resources:
+            requests:
+              cpu: 500m
+              memory: 1Gi
+            limits:
+              cpu: "1"
+              memory: 2Gi
+
+          startupProbe:
+            tcpSocket:
+              port: mongodb
+            periodSeconds: 5
+            failureThreshold: 60 # Allow up to five minutes for startup.
+
+          readinessProbe:
+            tcpSocket:
+              port: mongodb
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 3
+
+          livenessProbe:
+            tcpSocket:
+              port: mongodb
+            periodSeconds: 20
+            timeoutSeconds: 5
+            failureThreshold: 3
+
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+                - ALL # Remove additional Linux capabilities.
+
+          volumeMounts:
+            - name: mongodb-data
+              mountPath: /data/db # Directory where MongoDB stores its data.
+
+  volumeClaimTemplates:
+    - metadata:
+        name: mongodb-data
+      spec:
+        accessModes:
+          - ReadWriteOnce # Allow the EBS volume to be mounted by one worker node.
+        storageClassName: gp3 # Use the gp3 StorageClass.
+        resources:
+          requests:
+            storage: 10Gi # Allocate 10Gi of database storage.
