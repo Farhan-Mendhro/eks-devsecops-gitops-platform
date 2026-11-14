@@ -58,7 +58,7 @@ spec:
 
       containers:
         - name: synopsis-backend
-          image: docker.io/farhan249/synopsis-backend:REPLACE_WITH_IMAGE_TAG
+          image: docker.io/farhan249/synopsis-backend:v1.0.0
           imagePullPolicy: IfNotPresent
 
           ports:

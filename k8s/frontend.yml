@@ -47,7 +47,7 @@ spec:
 
       containers:
         - name: synopsis-frontend
-          image: docker.io/farhan249/synopsis-frontend:REPLACE_WITH_IMAGE_TAG
+          image: docker.io/farhan249/synopsis-frontend:v1.0.0
           imagePullPolicy: IfNotPresent
 
           ports:
