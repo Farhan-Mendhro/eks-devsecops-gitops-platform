@@ -1,0 +1,142 @@
+pipeline {
+    agent any
+
+    // Receive the image tag automatically from the CI pipeline.
+    parameters {
+        string(name: 'IMAGE_TAG', defaultValue: '', description: 'Image tag received from Synopsis CI')
+    }
+
+    environment {
+        GITHUB_CREDENTIALS_ID = 'Github-cred' // Existing GitHub credential ID.
+        NOTIFY_EMAIL = 'farhanmendhro24@gmail.com' 
+        DOCKER_CREDENTIALS_ID = 'Docker-token'
+    }
+
+    stages {
+
+        // 1. Make sure CI provided an image tag.
+        stage('Verify Image Tag') {
+            steps {
+                sh 'test -n "$IMAGE_TAG"'
+                echo "Deploying image version: ${params.IMAGE_TAG}"
+            }
+        }
+
+        // 2. Download the repository from GitHub.
+        stage('Git Checkout') {
+            steps {
+                checkout scm
+            }
+        }
+
+        // 3. Update the image tags in Kubernetes manifests.
+        stage('Update Kubernetes Manifests') {
+            steps {
+                // Update the frontend image tag.
+                sh 'sed -i "s|synopsis-frontend:.*|synopsis-frontend:$IMAGE_TAG|" k8s/frontend.yml'
+
+                // Update the backend image tag.
+                sh 'sed -i "s|synopsis-backend:.*|synopsis-backend:$IMAGE_TAG|" k8s/backend.yml'
+            }
+        }
+
+        // 4. Save the updated manifests and push them to GitHub.
+        stage('Git Commit and Push') {
+            steps {
+                // Set the name Jenkins uses for Git commits.
+                sh 'git config user.name "Synopsis Jenkins"'
+
+                // Set the email Jenkins uses for Git commits.
+                sh 'git config user.email "jenkins@users.noreply.github.com"'
+
+                // Stage both updated Kubernetes files.
+                sh 'git add k8s/frontend.yml k8s/backend.yml'
+
+                // Create a commit containing the new image versions.
+                sh 'git diff --cached --quiet || git commit -m "GitOps: update Synopsis images to $IMAGE_TAG"'
+
+                // Retrieve the existing GitHub credential.
+                withCredentials([
+                    gitUsernamePassword(
+                        credentialsId: env.GITHUB_CREDENTIALS_ID,
+                        gitToolName: 'Default'
+                    )
+                ]) {
+                    // Push the updated manifests to the main branch.
+                    sh 'git push origin HEAD:main'
+                }
+            }
+        }
+    }
+
+    post {
+        success {
+            // Send a colored HTML email when the GitOps update succeeds.
+            emailext(
+                to: env.NOTIFY_EMAIL,
+                subject: "Synopsis GitOps Update - SUCCESS (#${env.BUILD_NUMBER})",
+                mimeType: 'text/html',
+                attachLog: true,
+                body: """
+                    <html>
+                    <body style="font-family:Arial,sans-serif;">
+                        <div style="background-color:#90EE90;padding:15px;">
+                            <h2 style="color:#155724;">Synopsis Pipeline Successful</h2>
+                        </div>
+                        <div style="background-color:#FFA07A;padding:12px;">
+                            <b>Project:</b> ${env.JOB_NAME}
+                        </div>
+                        <div style="background-color:#90EE90;padding:12px;">
+                            <b>Status:</b> ${currentBuild.currentResult}
+                        </div>
+                        <div style="background-color:#87CEEB;padding:12px;">
+                            <b>Image Tag:</b> ${params.IMAGE_TAG}
+                        </div>
+                        <div style="background-color:#DDA0DD;padding:12px;">
+                            <b>Build Number:</b> ${env.BUILD_NUMBER}
+                        </div>
+                        <div style="background-color:#87CEEB;padding:12px;">
+                            <b>Build URL:</b> <a href="${env.BUILD_URL}">${env.BUILD_URL}</a>
+                        </div>
+                        <p>GitOps manifests were successfully updated in GitHub.</p>
+                    </body>
+                    </html>
+                """
+            )
+        }
+
+        failure {
+            // Send a colored HTML email when the pipeline fails.
+            emailext(
+                to: env.NOTIFY_EMAIL,
+                subject: "Synopsis GitOps Update - FAILED (#${env.BUILD_NUMBER})",
+                mimeType: 'text/html',
+                attachLog: true,
+                body: """
+                    <html>
+                    <body style="font-family:Arial,sans-serif;">
+                        <div style="background-color:#F08080;padding:15px;">
+                            <h2 style="color:#721c24;">Synopsis Pipeline Failed</h2>
+                        </div>
+                        <div style="background-color:#FFA07A;padding:12px;">
+                            <b>Project:</b> ${env.JOB_NAME}
+                        </div>
+                        <div style="background-color:#F08080;padding:12px;">
+                            <b>Status:</b> ${currentBuild.currentResult}
+                        </div>
+                        <div style="background-color:#87CEEB;padding:12px;">
+                            <b>Image Tag:</b> ${params.IMAGE_TAG}
+                        </div>
+                        <div style="background-color:#DDA0DD;padding:12px;">
+                            <b>Build Number:</b> ${env.BUILD_NUMBER}
+                        </div>
+                        <div style="background-color:#87CEEB;padding:12px;">
+                            <b>Build URL:</b> <a href="${env.BUILD_URL}">${env.BUILD_URL}</a>
+                        </div>
+                    </body>
+                    </html>
+                """
+            )
+        }
+    }
+}
