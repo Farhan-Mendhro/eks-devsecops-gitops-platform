@@ -58,7 +58,7 @@ spec:
 
       containers:
         - name: synopsis-backend
-          image: docker.io/farhan249/synopsis-backend:7
+          image: docker.io/farhan249/synopsis-backend:9
           imagePullPolicy: IfNotPresent
 
           ports:
