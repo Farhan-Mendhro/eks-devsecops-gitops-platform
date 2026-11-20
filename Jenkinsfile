@@ -110,7 +110,7 @@ pipeline {
                 // 7. Start CD and send it the new image version.
                 stage('Trigger CD') {
                     steps {
-                        build job: 'Synopsis CD',
+                        build job: 'Synopsis-CD',
                             parameters: [string(name: 'IMAGE_TAG', value: "${IMAGE_TAG}")],
                             wait: false
                     }
