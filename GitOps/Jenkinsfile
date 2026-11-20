@@ -1,138 +1,104 @@
-pipeline {
-    agent any
+// This job is started by the CI job, which sends it the image tag.
 
-    // Receive the image tag automatically from the CI pipeline.
+pipeline {
+    agent any // Run on any available Jenkins machine.
+
+    options {
+        disableConcurrentBuilds() // Queue another CD run instead of running two together.
+    }
+
     parameters {
-        string(name: 'IMAGE_TAG', defaultValue: '', description: 'Image tag received from Synopsis CI')
+        string(
+            name: 'IMAGE_TAG', // Image version received from CI.
+            defaultValue: '', // Empty when started manually.
+            description: 'Image tag sent by the CI job'
+        )
     }
 
     environment {
-        GITHUB_CREDENTIALS_ID = 'Github-cred' // Existing GitHub credential ID.
-        NOTIFY_EMAIL = 'farhanmendhro24@gmail.com' 
-        DOCKER_CREDENTIALS_ID = 'Docker-token'
+        GITHUB_CREDENTIALS_ID = 'Github-cred' // Existing GitHub username and token credential.
+        NOTIFY_EMAIL = 'farhanmendhro24@gmail.com' // Email address for pipeline results.
     }
 
     stages {
 
-        // 1. Make sure CI provided an image tag.
+        // 1. Check that CI supplied an image version.
         stage('Verify Image Tag') {
             steps {
-                sh 'test -n "$IMAGE_TAG"'
-                echo "Deploying image version: ${params.IMAGE_TAG}"
+                sh 'test -n "$IMAGE_TAG"' // Stop if the image tag is empty.
+                sh 'echo Deploying image tag $IMAGE_TAG' // Display the image version.
             }
         }
 
-        // 2. Download the repository from GitHub.
-        stage('Git Checkout') {
+        // 2. Update the frontend and backend Kubernetes manifests.
+        stage('Update Kubernetes Files') {
             steps {
-                checkout scm
+                sh 'sed -i "/image:/s|synopsis-frontend:.*|synopsis-frontend:$IMAGE_TAG|" k8s/frontend.yml' // Update the frontend image tag.
+
+                sh 'sed -i "/image:/s|synopsis-backend:.*|synopsis-backend:$IMAGE_TAG|" k8s/backend.yml' // Update the backend image tag.
+
+                sh 'grep -q "synopsis-frontend:$IMAGE_TAG" k8s/frontend.yml' // Verify the frontend tag.
+
+                sh 'grep -q "synopsis-backend:$IMAGE_TAG" k8s/backend.yml' // Verify the backend tag.
             }
         }
 
-        // 3. Update the image tags in Kubernetes manifests.
-        stage('Update Kubernetes Manifests') {
-            steps {
-                // Update the frontend image tag.
-                sh 'sed -i "s|synopsis-frontend:.*|synopsis-frontend:$IMAGE_TAG|" k8s/frontend.yml'
-
-                // Update the backend image tag.
-                sh 'sed -i "s|synopsis-backend:.*|synopsis-backend:$IMAGE_TAG|" k8s/backend.yml'
-            }
-        }
-
-        // 4. Save the updated manifests and push them to GitHub.
+        // 3. Commit the updated manifests and push them to GitHub.
         stage('Git Commit and Push') {
             steps {
-                // Set the name Jenkins uses for Git commits.
-                sh 'git config user.name "Synopsis Jenkins"'
+                sh 'git config user.name "Synopsis Jenkins"' // Set the commit author name.
 
-                // Set the email Jenkins uses for Git commits.
-                sh 'git config user.email "jenkins@users.noreply.github.com"'
+                sh 'git config user.email "jenkins@users.noreply.github.com"' // Set the commit author email.
 
-                // Stage both updated Kubernetes files.
-                sh 'git add k8s/frontend.yml k8s/backend.yml'
+                sh 'git add k8s/frontend.yml k8s/backend.yml' // Stage only the two Kubernetes files.
 
-                // Create a commit containing the new image versions.
-                sh 'git diff --cached --quiet || git commit -m "GitOps: update Synopsis images to $IMAGE_TAG"'
+                sh 'git diff --cached --quiet || git commit -m "GitOps: update Synopsis images to $IMAGE_TAG"' // Commit only when changes exist.
 
-                // Retrieve the existing GitHub credential.
-                withCredentials([
-                    gitUsernamePassword(
-                        credentialsId: env.GITHUB_CREDENTIALS_ID,
-                        gitToolName: 'Default'
-                    )
-                ]) {
-                    // Push the updated manifests to the main branch.
-                    sh 'git push origin HEAD:main'
+                withCredentials([gitUsernamePassword(credentialsId: "${GITHUB_CREDENTIALS_ID}", gitToolName: 'Default')]) {
+                    sh 'git push origin HEAD:main' // Push the updated manifests to main.
                 }
             }
         }
     }
 
     post {
+
+        // Send an email when the CD pipeline succeeds.
         success {
-            // Send a colored HTML email when the GitOps update succeeds.
             emailext(
-                to: env.NOTIFY_EMAIL,
-                subject: "Synopsis GitOps Update - SUCCESS (#${env.BUILD_NUMBER})",
+                to: "${NOTIFY_EMAIL}",
+                subject: "Synopsis CD succeeded (#${BUILD_NUMBER})",
                 mimeType: 'text/html',
                 attachLog: true,
                 body: """
                     <html>
                     <body style="font-family:Arial,sans-serif;">
-                        <div style="background-color:#90EE90;padding:15px;">
-                            <h2 style="color:#155724;">Synopsis Pipeline Successful</h2>
-                        </div>
-                        <div style="background-color:#FFA07A;padding:12px;">
-                            <b>Project:</b> ${env.JOB_NAME}
-                        </div>
-                        <div style="background-color:#90EE90;padding:12px;">
-                            <b>Status:</b> ${currentBuild.currentResult}
-                        </div>
-                        <div style="background-color:#87CEEB;padding:12px;">
-                            <b>Image Tag:</b> ${params.IMAGE_TAG}
-                        </div>
-                        <div style="background-color:#DDA0DD;padding:12px;">
-                            <b>Build Number:</b> ${env.BUILD_NUMBER}
-                        </div>
-                        <div style="background-color:#87CEEB;padding:12px;">
-                            <b>Build URL:</b> <a href="${env.BUILD_URL}">${env.BUILD_URL}</a>
-                        </div>
-                        <p>GitOps manifests were successfully updated in GitHub.</p>
+                        <h2 style="background-color:#2e7d32;color:#ffffff;padding:15px;">Synopsis CD succeeded</h2>
+                        <p>The Kubernetes manifests were updated and pushed to GitHub.</p>
+                        <p><b>Image tag:</b> ${IMAGE_TAG}</p>
+                        <p><b>Build number:</b> ${BUILD_NUMBER}</p>
+                        <p><b>Build page:</b> <a href="${BUILD_URL}">${BUILD_URL}</a></p>
                     </body>
                     </html>
                 """
             )
         }
 
+        // Send an email when the CD pipeline fails.
         failure {
-            // Send a colored HTML email when the pipeline fails.
             emailext(
-                to: env.NOTIFY_EMAIL,
-                subject: "Synopsis GitOps Update - FAILED (#${env.BUILD_NUMBER})",
+                to: "${NOTIFY_EMAIL}",
+                subject: "Synopsis CD failed (#${BUILD_NUMBER})",
                 mimeType: 'text/html',
                 attachLog: true,
                 body: """
                     <html>
                     <body style="font-family:Arial,sans-serif;">
-                        <div style="background-color:#F08080;padding:15px;">
-                            <h2 style="color:#721c24;">Synopsis Pipeline Failed</h2>
-                        </div>
-                        <div style="background-color:#FFA07A;padding:12px;">
-                            <b>Project:</b> ${env.JOB_NAME}
-                        </div>
-                        <div style="background-color:#F08080;padding:12px;">
-                            <b>Status:</b> ${currentBuild.currentResult}
-                        </div>
-                        <div style="background-color:#87CEEB;padding:12px;">
-                            <b>Image Tag:</b> ${params.IMAGE_TAG}
-                        </div>
-                        <div style="background-color:#DDA0DD;padding:12px;">
-                            <b>Build Number:</b> ${env.BUILD_NUMBER}
-                        </div>
-                        <div style="background-color:#87CEEB;padding:12px;">
-                            <b>Build URL:</b> <a href="${env.BUILD_URL}">${env.BUILD_URL}</a>
-                        </div>
+                        <h2 style="background-color:#d84315;color:#ffffff;padding:15px;">Synopsis CD failed</h2>
+                        <p>Open the build page and attached log to identify the failed stage.</p>
+                        <p><b>Image tag:</b> ${IMAGE_TAG}</p>
+                        <p><b>Build number:</b> ${BUILD_NUMBER}</p>
+                        <p><b>Build page:</b> <a href="${BUILD_URL}">${BUILD_URL}</a></p>
                     </body>
                     </html>
                 """
