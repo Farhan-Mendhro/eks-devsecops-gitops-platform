@@ -47,7 +47,7 @@ spec:
 
       containers:
         - name: synopsis-frontend
-          image: docker.io/farhan249/synopsis-frontend:9
+          image: docker.io/farhan249/synopsis-frontend:11
           imagePullPolicy: IfNotPresent
 
           ports:
