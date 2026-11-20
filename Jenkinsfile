@@ -54,6 +54,7 @@ pipeline {
                     changeset 'frontend/**'
                     changeset 'backend/**'
                     changeset 'Jenkinsfile*'
+                    changeset pattern: 'GitOps/Jenkinsfile', comparator: 'EQUALS'
                     triggeredBy 'UserIdCause'
                 }
             }
