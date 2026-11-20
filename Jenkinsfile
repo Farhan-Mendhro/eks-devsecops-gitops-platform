@@ -12,7 +12,7 @@ pipeline {
 
     // Check GitHub for new commits every five minutes.
     triggers {
-        pollSCM('H/5 * * * *')
+        pollSCM('H/2 * * * *')
     }
 
     // Shared settings used by the pipeline.
