@@ -16,7 +16,7 @@ pipeline {
     }
 
     environment {
-        GITHUB_CREDENTIALS_ID = 'Github-cred' // Existing GitHub username and token credential.
+        GITHUB_CREDENTIALS_ID = 'github-cred' // Existing GitHub username and token credential.
         NOTIFY_EMAIL = 'farhanmendhro24@gmail.com' // Email address for pipeline results.
     }
 
