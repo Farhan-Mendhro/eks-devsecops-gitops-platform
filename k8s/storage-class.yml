@@ -1,13 +1,11 @@
 apiVersion: storage.k8s.io/v1
 kind: StorageClass
 metadata:
-  name: gp3
-
-provisioner: ebs.csi.aws.com
-reclaimPolicy: Retain
-allowVolumeExpansion: true
-volumeBindingMode: WaitForFirstConsumer
-
+  name: gp3 # This name must match storageClassName in mongo.yml.
+provisioner: ebs.csi.aws.com # Use the standard Amazon EBS CSI driver to create AWS volumes.
+reclaimPolicy: Retain # Keep the AWS volume if its Kubernetes storage claim is deleted.
+allowVolumeExpansion: true # Allow the MongoDB storage size to be increased later.
+volumeBindingMode: WaitForFirstConsumer # Wait until MongoDB is scheduled before creating its volume.
 parameters:
-  type: gp3
-  encrypted: "true"
+  type: gp3 # Create an AWS gp3 EBS volume.
+  encrypted: "true" # Encrypt the data stored on the EBS volume.
