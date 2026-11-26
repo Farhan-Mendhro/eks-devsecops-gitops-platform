@@ -69,9 +69,6 @@ spec:
           envFrom:
             - configMapRef:
                 name: synopsis-backend-config # Load ordinary settings such as PORT and database addresses.
-            - secretRef:
-                name: synopsis-backend-secrets # Load sensitive values such as JWT and OAuth secrets.
-                optional: false # Don't start the backend if this Secret is missing.
 
           resources:
             requests:
