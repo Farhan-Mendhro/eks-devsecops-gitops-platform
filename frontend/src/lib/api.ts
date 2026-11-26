@@ -46,9 +46,6 @@ async function withFallback(
   call: () => Promise<unknown>,
   demo: () => Post[],
 ): Promise<Feed> {
-  // No API URL means local preview mode. No backend/database is required to see the UI.
-  if (!API) return { data: demo(), demo: true };
-
   try {
     const posts = normalizePostList(await call());
     if (!posts) throw new Error('The API response was not a list of posts.');
@@ -75,7 +72,6 @@ export const getByCategory = (c: string) => withFallback(
 
 export async function getPost(id: string): Promise<Post | null> {
   if (isDemoId(id)) return DEMO.find((p) => p._id === id) ?? null;
-  if (!API) return null;
 
   const response = await axios.get(`${API}/api/posts/${id}`);
   const result = response.data?.post ?? response.data?.data ?? response.data;
