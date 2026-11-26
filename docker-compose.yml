@@ -4,8 +4,6 @@ services:
   frontend:
     build:
       context: ./frontend
-      args:
-        VITE_API_PATH: /api # Frontend sends API requests through NGINX.
     image: farhan249/synopsis-frontend:local
     ports:
       - "127.0.0.1:8080:8080" # Allow browser access only from this machine.
