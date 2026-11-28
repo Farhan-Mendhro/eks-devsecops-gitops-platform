@@ -1,46 +1,46 @@
-
 services:
   # React frontend served through NGINX.
-  frontend:
+  synopsis-frontend-svc:
     build:
       context: ./frontend
     image: farhan249/synopsis-frontend:local
     ports:
       - "127.0.0.1:8080:8080" # Allow browser access only from this machine.
     depends_on:
-      - backend # Start the backend container first.
+      - synopsis-backend-svc # Start the backend container first.
     restart: unless-stopped
 
   # Node.js / Express backend.
-  backend:
+  synopsis-backend-svc:
     build:
       context: ./backend
     image: farhan249/synopsis-backend:local
     environment:
       PORT: "5000" # Port used by Express.
-      MONGODB_URI: mongodb://mongodb:27017/synopsis # Connect to MongoDB by service name.
-      REDIS_URL: redis://redis:6379 # Connect to Redis by service name.
+      MONGODB_URI: mongodb://synopsis-mongodb-svc:27017/synopsis # Connect to MongoDB by service name.
+      REDIS_URL: redis://synopsis-redis-svc:6379 # Connect to Redis by service name.
     depends_on:
-      mongodb:
+      synopsis-mongodb-svc:
         condition: service_healthy # Wait until MongoDB responds.
-      redis:
+      synopsis-redis-svc:
         condition: service_healthy # Wait until Redis responds.
     restart: unless-stopped
 
   # MongoDB database.
-  mongodb:
+  synopsis-mongodb-svc:
     image: mongo:8.0.30-noble
     volumes:
       - mongodb-data:/data/db # Keep database data after container replacement.
     healthcheck:
-      test: ["CMD", "mongosh", "--quiet", "--eval", "db.adminCommand('ping').ok"]
+      test:
+        ["CMD", "mongosh", "--quiet", "--eval", "db.adminCommand('ping').ok"]
       interval: 10s
       timeout: 5s
       retries: 5
     restart: unless-stopped
 
   # Redis cache.
-  redis:
+  synopsis-redis-svc:
     image: redis:7.4.12-alpine3.22
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]

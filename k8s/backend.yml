@@ -111,7 +111,7 @@ spec:
 apiVersion: v1
 kind: Service
 metadata:
-  name: backend
+  name: synopsis-backend-svc
   namespace: synopsis
   labels:
     app.kubernetes.io/name: synopsis-backend
